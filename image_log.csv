@@ -1,6 +1,7 @@
-Filename,Event Type,High Speed,Notes
-036.png,,Yes,aaa
-037.png,,Yes,bbb
-046.png,,No,cccc
-074.png,,No,dd
-083.png,,No,ffff
+Observer: Observer 1
+Event Type,Filename,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event
+,260312T001533_dif.jpg,,,,,,
+Doppler shift,260312T001733_dif.jpg,,,,,,
+Ejection,260312T000908_dif.jpg,,,,,,
+Ejection,260312T000920_dif.jpg,,,,,,
+Prominence activity,260312T000944_dif.jpg,,,,,,
