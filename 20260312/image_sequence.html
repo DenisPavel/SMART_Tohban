@@ -125,12 +125,12 @@
         // Assumes format YYMMDDTHHMMSS...
         var match = fname.match(/T(\d{2})(\d{2})(\d{2})/);
         if (match) {
-            return match[1] + ":" + match[2] + ":" + match[3];
+            return match[1] + match[2];
         }
         // Fallback for HHMM
         match = fname.match(/T(\d{2})(\d{2})/);
         if (match) {
-            return match[1] + ":" + match[2] + ":00";
+            return match[1] + match[2];
         }
         return "";
     }
@@ -194,10 +194,10 @@
         cell1.innerHTML = eventSelect;
         
         // Start time
-        cell2.innerHTML = '<input type="text" placeholder="Start time" style="width:70px; font-size: 0.9em;" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:0.8em; padding:2px;">Set</button>';
+        cell2.innerHTML = '<input type="text" placeholder="hhmm" style="width:70px; font-size: 0.9em;" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:12px; padding:4px 8px;">Set</button>';
         
         // End time
-        cell3.innerHTML = '<input type="text" placeholder="End time" style="width:70px; font-size: 0.9em;" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:0.8em; padding:2px;">Set</button>';
+        cell3.innerHTML = '<input type="text" placeholder="hhmm" style="width:70px; font-size: 0.9em;" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:12px; padding:4px 8px;">Set</button>';
 
         // Event sequence
         var seqOpts = [
@@ -225,7 +225,7 @@
         
         var seqOptsSorted = [
             {val: "A", text: "After (A)"},
-            {val: "BA", text: "Befor after (BA)"},
+            {val: "BA", text: "Before after (BA)"},
             {val: "B", text: "Before (B)"},
             {val: "BI", text: "Before interm. (BI)"},
             {val: "BIA", text: "Before interm. after (BIA)"},
@@ -251,7 +251,7 @@
         cell7.innerHTML = '<input type="text" placeholder="Enter T1 event..." style="width:100%; font-size: 0.9em;" oninput="saveData()">';
 
         // Action
-        cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size: 0.9em;">Delete</button>';
+        cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size:12px; padding:4px 8px;">Delete</button>';
         
         saveData();
     }
@@ -273,6 +273,19 @@
         }
     }
 
+    function isValidHHMM(val) {
+        if (!/^[0-9]{4}$/.test(val)) return false;
+        var hh = parseInt(val.slice(0, 2), 10);
+        var mm = parseInt(val.slice(2, 4), 10);
+        return hh >= 0 && hh < 24 && mm >= 0 && mm < 60;
+    }
+
+    function hhmmToMinutes(val) {
+        var hh = parseInt(val.slice(0, 2), 10);
+        var mm = parseInt(val.slice(2, 4), 10);
+        return hh * 60 + mm;
+    }
+
     function saveData() {
         var table = document.getElementById('logTable');
         var rows = table.rows;
@@ -280,8 +293,21 @@
         // Skip header (row 0)
         for (var i = 1; i < rows.length; i++) {
             var eventType = rows[i].cells[0].getElementsByTagName('select')[0].value;
-            var startTime = rows[i].cells[1].getElementsByTagName('input')[0].value;
-            var endTime = rows[i].cells[2].getElementsByTagName('input')[0].value;
+            var startInput = rows[i].cells[1].getElementsByTagName('input')[0];
+            var endInput = rows[i].cells[2].getElementsByTagName('input')[0];
+            var startTime = startInput.value.trim();
+            var endTime = endInput.value.trim();
+
+            // Validate time range only when both fields are valid hhmm values.
+            if (isValidHHMM(startTime) && isValidHHMM(endTime)) {
+                if (hhmmToMinutes(endTime) < hhmmToMinutes(startTime)) {
+                    alert("Time not allowed");
+                    endInput.value = "";
+                    endTime = "";
+                    endInput.focus();
+                }
+            }
+
             // Event Seq is now select
             var eventSeq = rows[i].cells[3].getElementsByTagName('select')[0].value;
             var highSpeed = rows[i].cells[4].getElementsByTagName('select')[0].value;
@@ -347,10 +373,10 @@
                     cell1.innerHTML = eventSelect;
 
                     // Start Time
-                    cell2.innerHTML = '<input type="text" placeholder="Start time" style="width:70px; font-size: 0.9em;" value="' + (data[i].startTime || "") + '" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:0.8em; padding:2px;">Set</button>';
+                    cell2.innerHTML = '<input type="text" placeholder="hhmm" style="width:70px; font-size: 0.9em;" value="' + (data[i].startTime || "") + '" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:12px; padding:4px 8px;">Set</button>';
                     
                     // End Time
-                    cell3.innerHTML = '<input type="text" placeholder="End time" style="width:70px; font-size: 0.9em;" value="' + (data[i].endTime || "") + '" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:0.8em; padding:2px;">Set</button>';
+                    cell3.innerHTML = '<input type="text" placeholder="hhmm" style="width:70px; font-size: 0.9em;" value="' + (data[i].endTime || "") + '" oninput="saveData()"> <button onclick="setTime(this)" style="font-size:12px; padding:4px 8px;">Set</button>';
 
                     // Event Seq - Dropdown
                     var eventSeq = data[i].eventSeq || "";
@@ -385,7 +411,7 @@
                     cell7.innerHTML = '<input type="text" placeholder="Enter T1 event..." style="width:100%; font-size: 0.9em;" value="' + (data[i].t1Event || data[i].notes || "") + '" oninput="saveData()">';
 
                     // Action
-                    cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size: 0.9em;">Delete</button>';
+                    cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size:12px; padding:4px 8px;">Delete</button>';
                 }
             }
         } catch (e) {
@@ -402,13 +428,25 @@
     }
 
     function downloadCSV() {
+        var csvText = buildCSVText();
+        var csvContent = "data:text/csv;charset=utf-8," + csvText;
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "image_log.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function buildCSVText() {
         var table = document.getElementById('logTable');
         var rows = table.rows;
         var observer = document.getElementById('observerName').value;
         var flatframe = document.getElementById('flatFrame').value;
-        
-        var csvContent = "data:text/csv;charset=utf-8,Observer: " + observer + ",Flat frame: " + flatframe + "\n";
-        csvContent += "Event Type,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event\n";
+
+        var csvText = "Observer: " + observer + ",Flat frame: " + flatframe + "\n";
+        csvText += "Event Type,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event\n";
 
         for (var i = 1; i < rows.length; i++) { // Skip header
             var eventType = rows[i].cells[0].getElementsByTagName('select')[0].value;
@@ -422,16 +460,34 @@
 
             var rowData = [eventType, startTime, endTime, eventSeq, highSpeed, location, t1Event];
             // Escape commas in data and join
-            csvContent += rowData.map(val => val.replace(/,/g, " ")).join(",") + "\n"; 
+            csvText += rowData.map(val => val.replace(/,/g, " ")).join(",") + "\n";
         }
-        
-        var encodedUri = encodeURI(csvContent);
-        var link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "image_log.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        return csvText;
+    }
+
+    function previewCSV() {
+        var csvText = buildCSVText();
+        var params = 'width=900,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
+        var win = window.open('', 'CSV_Preview_Window', params);
+        if (!win) {
+            alert('Pop-up blocked! Please allow pop-ups for this site.');
+            return;
+        }
+
+        var d = win.document;
+        d.open();
+        d.write('<html><head><title>CSV Preview</title>');
+        d.write('<style>body{font-family: sans-serif; margin: 12px;} h3{margin:0 0 10px 0;} pre{white-space: pre-wrap; word-wrap: break-word; font-family: Menlo, Consolas, monospace; font-size: 13px; line-height: 1.4; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f7f7f7;} button{font-size:12px; padding:4px 8px; margin-bottom:10px;}</style>');
+        d.write('</head><body>');
+        d.write('<button onclick="window.close()">Close</button>');
+        d.write('<h3>CSV Preview</h3>');
+        d.write('<pre id="csvPreview"></pre>');
+        d.write('</body></html>');
+        d.close();
+        var pre = win.document.getElementById('csvPreview');
+        if (pre) pre.textContent = csvText;
+        win.focus();
     }
 
     // Preload images
@@ -464,20 +520,42 @@
             btn.innerHTML = isDark ? "Light Mode" : "Dark Mode";
         }
     }
-    </script>
+    function openNOAAWindow() {
+        var params = 'width=800,height=800,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
+        var win = window.open("", "NOAA_AR_Window", params);
+        // Assuming HTML is in a subdirectory (e.g. 20260312/) and NOAA_numbers is a sibling directory
+        var imgPath = "../NOAA_numbers/qlmovie_ar_check_tmp.png"; 
+        
+        if (win) {
+            var d = win.document;
+            d.open();
+            d.write('<html><head><title>NOAA Active Regions</title></head>');
+            d.write('<body style="margin:0; text-align:center; background-color:#333; color: white; display: flex; flex-direction: column; height: 100vh; justify-content: center; align-items: center;">');
+            d.write('<div style="flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; overflow: hidden;">');
+            d.write('<img src="' + imgPath + '" style="max-width:100%; max-height:100%; object-fit: contain;" alt="NOAA AR Image">');
+            d.write('</div>');
+            d.write('<div style="padding: 10px;"><button onclick="window.close()" style="padding:8px 15px; font-size:14px; cursor:pointer;">Close Window</button></div>');
+            d.write('</body></html>');
+            d.close();
+            win.focus();
+        } else {
+            alert("Pop-up blocked! Please allow pop-ups for this site.");
+        }
+    }    </script>
         <style>
             body { text-align: center; font-family: sans-serif; transition: background-color 0.3s, color 0.3s; }
             .controls { margin: 10px 0; }
             button { padding: 8px 15px; font-size: 16px; margin-right: 5px; cursor: pointer; }
-            #frameCounter { font-weight: bold; margin-bottom: 5px; }
+            #frameCounter { font-weight: bold; margin-left: 10px; }
             #logSection { margin: 20px auto; width: 80%; text-align: left; }
             #logContainer { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 10px; }
             #logTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
             #logTable th, #logTable td { border: 1px solid #ddd; padding: 5px; }
             #logTable th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 10; font-size: 0.9em; }
-            #logControls { margin-top: 20px; text-align: center; }
+            #logControls { margin-top: 20px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
             .zoom-control { margin-top: 10px; margin-bottom: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
             .zoom-control button { font-size: 12px; padding: 2px 5px; }
+            .controls button { font-size: 12px; padding: 4px 8px; }
             input[type=range] { vertical-align: middle; width: 200px; }
             
             /* Dark Mode Styles */
@@ -492,7 +570,7 @@
     </head>
     <body onload="preloadImages(); startAnimate(); loadData(); loadTheme();">
         <h2>
-            Observation: "26-03-12"
+            Observation: "2026-03-12"
         </h2>
         
         <div class="zoom-control">
@@ -502,13 +580,12 @@
             <span id="zoomDisplay" style="display:inline-block; width:40px;">100%</span>
             <button onclick="resetZoom()">Reset Zoom</button>
             <button id="themeBtn" onclick="toggleDarkMode()" style="font-size: 12px; margin-left: 10px; padding: 4px 8px;">Dark Mode</button>
+            <button onclick="openNOAAWindow()" style="font-size: 12px; margin-left: 10px; padding: 4px 8px;">View today ARs</button>
         </div>
         
         <img name="imageWindow" src="260312T000820_dif.jpg" alt="Image sequence animation" style="width: 100%; max-width: none;">
         
         <div class="controls">
-            <span id="frameCounter">50 frames (100ms), 1/50</span>
-            <br><br>
             <button onclick="startAnimate()">Play</button>
             <button onclick="killAnimate()">Stop</button>
             <button onclick="stepPrev()">Previous</button>
@@ -516,14 +593,16 @@
             <button onclick="speedUp()">Faster</button>
             <button onclick="slowDown()">Slower</button>
             <button onclick="reloadPage()">Reload</button>
+            <span id="frameCounter">50 frames (100ms), 1/50</span>
         </div>
 
         <div id="logSection">
-            <h3>SMART T1 Event list</h3>
             <div id="logControls">
+                 <h3 style="margin: 0 6px 0 0;">SMART T1 Event list</h3>
                  <button onclick="addLogEntry()">Add new event</button>
                  <button onclick="cleanLog()">Clean Log Chart</button>
                  <button onclick="downloadCSV()">Download Log as CSV</button>
+                  <button onclick="previewCSV()">View CSV Preview</button>
             </div>
             
             <div id="logContainer">
@@ -547,8 +626,8 @@
                 <input type="text" id="observerName" oninput="saveObserver()" placeholder="Enter Name" style="width: 200px;">
                 
                 <label for="flatFrame" style="font-weight: bold; margin-left: 20px;">Flat frame: </label>
-                <input type="text" id="flatFrame" oninput="saveObserver()" placeholder="yyMMddThhmmss" style="width: 200px;">
-                <button onclick="setFlatFrameTime()" style="font-size: 0.9em; padding: 2px 5px;">Set time</button>
+                <input type="text" id="flatFrame" oninput="saveObserver()" placeholder="yymmddThhmmss" style="width: 200px;">
+                <button onclick="setFlatFrameTime()" style="font-size:12px; padding:4px 8px;">Set time</button>
             </div>
         </div>
     </body>

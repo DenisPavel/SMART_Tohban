@@ -1,237 +1,177 @@
-import os
-import glob
-import time
-import webbrowser
-import pathlib
-import sys
 
-#import numpy as np
-#import matplotlib.pyplot as pl
-
-
-def create_image_sequence_html(image_dir, output_html='image_sequence.html', delay_ms=100):
-    """
-    Generates an HTML file with JavaScript to animate an image sequence.
-    """
-    # Find all image files with common extensions and sort them numerically
-    extensions = ('*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp')
-    files = []
-    for ext in extensions:
-        files.extend(glob.glob(os.path.join(image_dir, ext)))
-    
-    # Sort files naturally (e.g., file_1.jpg before file_10.jpg)
-    files.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
-
-    if not files:
-        print(f"No images found in {image_dir}")
-        return
-
-    # Check if we should save inside the image dir to keep links relative (recommended for portability)
-    html_dir = os.path.dirname(output_html)
-    if not html_dir:
-         output_html = os.path.join(image_dir, output_html)
-         html_dir = image_dir
-
-    num_frames = len(files)
-    
-    # Generate relative paths for portability (works on GitHub, other computers)
-    try:
-        files_js = [os.path.relpath(f, html_dir).replace(os.sep, '/') for f in files]
-    except ValueError:
-        # Fallback to absolute URIs if relative paths are impossible (e.g. different drives on Windows)
-        files_js = [pathlib.Path(f).absolute().as_uri() for f in files]
-
-    file_names = [os.path.basename(f) for f in files]
-
-    # Extract date for title
-    # Priority 1: From folder name if it looks like YYYYMMDD
-    import re
-    obs_date = "Unknown"
-    folder_name = os.path.basename(os.path.normpath(image_dir))
-    match_folder = re.match(r'^(\d{4})(\d{2})(\d{2})$', folder_name)
-    
-    if match_folder:
-        obs_date = f"{match_folder.group(1)}-{match_folder.group(2)}-{match_folder.group(3)}"
-    elif len(file_names) > 0:
-        # Priority 2: From first filename (e.g. 260312T... -> 2026-03-12 or similar)
-        # Assumes YYMMDD before 'T'
-        match = re.search(r'(\d{2})(\d{2})(\d{2})T', file_names[0])
-        if match:
-             # Just guessing century? Or assuming user wants exact string.
-             # If filename is 260312, it is YYMMDD.
-             obs_date = f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
-    
-    # JavaScript to handle animation
-    js_script = f"""
-    var aniFrames = new Array({num_frames});
-    var imageFiles = {files_js};
-    var imageNames = {file_names};
+    <html>
+    <head>
+        <title>Image Sequence Viewer</title>
+        <script>
+    var aniFrames = new Array(10);
+    var imageFiles = ['260324T222832_dif.jpg', '260324T222844_dif.jpg', '260324T222856_dif.jpg', '260324T222908_dif.jpg', '260324T222920_dif.jpg', '260324T222932_dif.jpg', '260324T222944_dif.jpg', '260324T222956_dif.jpg', '260324T223008_dif.jpg', '260324T223020_dif.jpg'];
+    var imageNames = ['260324T222832_dif.jpg', '260324T222844_dif.jpg', '260324T222856_dif.jpg', '260324T222908_dif.jpg', '260324T222920_dif.jpg', '260324T222932_dif.jpg', '260324T222944_dif.jpg', '260324T222956_dif.jpg', '260324T223008_dif.jpg', '260324T223020_dif.jpg'];
     var frameNum = 0;
-    var maxFrameNum = {num_frames} - 1;
+    var maxFrameNum = 10 - 1;
     var timeout_id = null;
-    var delay = {delay_ms}; // Milliseconds
+    var delay = 100; // Milliseconds
 
-    function showFrame() {{
+    function showFrame() {
         document.imageWindow.src = aniFrames[frameNum].src;
         updateStatusDisplay();
-    }}
+    }
 
-    function animate() {{
+    function animate() {
         frameNum++;
         if (frameNum > maxFrameNum) frameNum = 0; // Loop animation
         showFrame();
         timeout_id = setTimeout(animate, delay);
-    }}
+    }
 
-    function startAnimate() {{
+    function startAnimate() {
         if (timeout_id) return; // Already running
         animate();
-    }}
+    }
 
-    function killAnimate(){{
+    function killAnimate(){
         if (timeout_id) clearTimeout(timeout_id);
         timeout_id = null;
-    }}
+    }
 
-    function stepNext() {{
+    function stepNext() {
         killAnimate();
         frameNum++;
         if (frameNum > maxFrameNum) frameNum = 0;
         showFrame();
-    }}
+    }
 
-    function stepPrev() {{
+    function stepPrev() {
         killAnimate();
         frameNum--;
         if (frameNum < 0) frameNum = maxFrameNum;
         showFrame();
-    }}
+    }
 
-    function speedUp() {{
+    function speedUp() {
         delay = Math.max(10, delay - 20); // Decrease delay (faster)
         updateSpeedDisplay();
-    }}
+    }
 
-    function slowDown() {{
+    function slowDown() {
         delay = delay + 20; // Increase delay (slower)
         updateSpeedDisplay();
-    }}
+    }
     
-    function updateSpeedDisplay() {{
+    function updateSpeedDisplay() {
         // Combined with frame counter status
         updateStatusDisplay();
-    }}
+    }
     
     // Keyboard Shortcuts
-    document.addEventListener('keydown', function(event) {{
+    document.addEventListener('keydown', function(event) {
         // Only run if the active element is NOT an input or textarea
         if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) return;
 
-        if (event.key === "ArrowRight") {{
+        if (event.key === "ArrowRight") {
             stepNext();
-        }} else if (event.key === "ArrowLeft") {{
+        } else if (event.key === "ArrowLeft") {
             stepPrev();
-        }} else if (event.key === " ") {{ // Spacebar
+        } else if (event.key === " ") { // Spacebar
             event.preventDefault(); // Prevent scrolling
-            if (timeout_id) {{
+            if (timeout_id) {
                 killAnimate();
-            }} else {{
+            } else {
                 startAnimate();
-            }}
-        }}
-    }});
+            }
+        }
+    });
     
-    function updateStatusDisplay() {{
+    function updateStatusDisplay() {
         var counter = document.getElementById('frameCounter');
-        if (counter) {{
-            counter.innerHTML = "{num_frames} frames (" + delay + "ms), " + (frameNum + 1) + "/" + {num_frames};
-        }}
-    }}
+        if (counter) {
+            counter.innerHTML = "10 frames (" + delay + "ms), " + (frameNum + 1) + "/" + 10;
+        }
+    }
 
 
-    function changeZoom(val) {{
+    function changeZoom(val) {
         // val is from range input (absolute value)
         var img = document.getElementsByName('imageWindow')[0];
-        if (img) {{
+        if (img) {
             img.style.width = val + '%';
             
             var label = document.getElementById('zoomDisplay');
-            if (label) {{
+            if (label) {
                 label.innerHTML = val + '%';
-            }}
-        }}
-    }}
+            }
+        }
+    }
 
-    function resetZoom() {{
+    function resetZoom() {
         var img = document.getElementsByName('imageWindow')[0];
-        if (img) {{
+        if (img) {
             img.style.width = '100%';
-        }}
+        }
         var slider = document.getElementById('zoomSlider');
-        if (slider) {{
+        if (slider) {
             slider.value = 100;
-        }}
+        }
         var label = document.getElementById('zoomDisplay');
-        if (label) {{
+        if (label) {
             label.innerHTML = '100%';
-        }}
-    }}
+        }
+    }
 
-    function reloadPage() {{
+    function reloadPage() {
         window.location.reload();
-    }}
+    }
     
-    function getTimeFromFilename(fname) {{
+    function getTimeFromFilename(fname) {
         // Assumes format YYMMDDTHHMMSS...
-        var match = fname.match(/T(\\d{{2}})(\\d{{2}})(\\d{{2}})/);
-        if (match) {{
+        var match = fname.match(/T(\d{2})(\d{2})(\d{2})/);
+        if (match) {
             return match[1] + match[2];
-        }}
+        }
         // Fallback for HHMM
-        match = fname.match(/T(\\d{{2}})(\\d{{2}})/);
-        if (match) {{
+        match = fname.match(/T(\d{2})(\d{2})/);
+        if (match) {
             return match[1] + match[2];
-        }}
+        }
         return "";
-    }}
+    }
 
-    function setTime(btn) {{
+    function setTime(btn) {
         // Find input in previous sibling or parent cell
         var input = btn.previousElementSibling;
-        if (!input || input.tagName !== 'INPUT') {{
+        if (!input || input.tagName !== 'INPUT') {
             // Try parent
             input = btn.parentNode.querySelector('input');
-        }}
-        if (input) {{
+        }
+        if (input) {
             // Get current time from current frame
             var currentFname = imageNames[frameNum];
             var timeStr = getTimeFromFilename(currentFname);
-            if (timeStr) {{
+            if (timeStr) {
                 input.value = timeStr;
                 saveData();
-            }} else {{
+            } else {
                 alert("Could not parse time from filename: " + currentFname);
-            }}
-        }}
-    }}
+            }
+        }
+    }
     
-    function setFlatFrameTime() {{
+    function setFlatFrameTime() {
         var currentFname = imageNames[frameNum];
         // Looking for YYMMDDTHHMMSS... format
         // Example: T1_260312T040003.png -> 260312T040003
-        var match = currentFname.match(/(\\d{{6}}T\\d{{6}})/);
-        if (match) {{
+        var match = currentFname.match(/(\d{6}T\d{6})/);
+        if (match) {
              document.getElementById('flatFrame').value = match[1];
              saveObserver();
-        }} else {{
+        } else {
              // Fallback: try just the base name without extension
              var base = currentFname.split('.').slice(0, -1).join('.');
              document.getElementById('flatFrame').value = base;
              saveObserver();
-        }}
-    }}
+        }
+    }
 
-    function addLogEntry() {{
+    function addLogEntry() {
         var table = document.getElementById('logTable').getElementsByTagName('tbody')[0];
 
         var newRow = table.insertRow();
@@ -247,9 +187,9 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         // Event Type
         var eventOpts = ["Doppler shift", "Ejection", "Filament activity", "Filament disapearance", "Filament eruption", "Flare", "H-alpha brightening", "Prominence activity", "Prominence eruption"];
         var eventSelect = '<select onchange="saveData()" style="font-size: 0.9em;"><option value="">Select...</option>';
-        for (var j = 0; j < eventOpts.length; j++) {{
+        for (var j = 0; j < eventOpts.length; j++) {
             eventSelect += '<option value="' + eventOpts[j] + '">' + eventOpts[j] + '</option>';
-        }}
+        }
         eventSelect += '</select>';
         cell1.innerHTML = eventSelect;
         
@@ -261,14 +201,14 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
 
         // Event sequence
         var seqOpts = [
-            {{val: "B", text: "Before (B)"}},
-            {{val: "F", text: "Full (F)"}},
-            {{val: "A", text: "After (A)"}},
-            {{val: "BI", text: "Before interm. (BI)"}},
-            {{val: "FI", text: "Full interm. (FI)"}},
-            {{val: "IA", text: "Interm. after (IA)"}},
-            {{val: "BA", text: "Befor after (BA)"}},
-            {{val: "BIA", text: "Before interm. after (BIA)"}}
+            {val: "B", text: "Before (B)"},
+            {val: "F", text: "Full (F)"},
+            {val: "A", text: "After (A)"},
+            {val: "BI", text: "Before interm. (BI)"},
+            {val: "FI", text: "Full interm. (FI)"},
+            {val: "IA", text: "Interm. after (IA)"},
+            {val: "BA", text: "Befor after (BA)"},
+            {val: "BIA", text: "Before interm. after (BIA)"}
         ];
         // Sort explicitly not needed as requested alphabetical order is roughly the order provided, or should I sort by text? 
         // "Add the following list (in alphabetical order)"
@@ -284,20 +224,20 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         // Interm. after (IA)
         
         var seqOptsSorted = [
-            {{val: "A", text: "After (A)"}},
-            {{val: "BA", text: "Before after (BA)"}},
-            {{val: "B", text: "Before (B)"}},
-            {{val: "BI", text: "Before interm. (BI)"}},
-            {{val: "BIA", text: "Before interm. after (BIA)"}},
-            {{val: "F", text: "Full (F)"}},
-            {{val: "FI", text: "Full interm. (FI)"}},
-            {{val: "IA", text: "Interm. after (IA)"}}
+            {val: "A", text: "After (A)"},
+            {val: "BA", text: "Before after (BA)"},
+            {val: "B", text: "Before (B)"},
+            {val: "BI", text: "Before interm. (BI)"},
+            {val: "BIA", text: "Before interm. after (BIA)"},
+            {val: "F", text: "Full (F)"},
+            {val: "FI", text: "Full interm. (FI)"},
+            {val: "IA", text: "Interm. after (IA)"}
         ];
 
         var seqSelect = '<select onchange="saveData()" style="font-size: 0.9em; width: 100%;"><option value="">Select...</option>';
-        for (var k = 0; k < seqOptsSorted.length; k++) {{
+        for (var k = 0; k < seqOptsSorted.length; k++) {
             seqSelect += '<option value="' + seqOptsSorted[k].val + '">' + seqOptsSorted[k].text + '</option>';
-        }}
+        }
         seqSelect += '</select>';
         cell4.innerHTML = seqSelect;
         
@@ -314,44 +254,44 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size:12px; padding:4px 8px;">Delete</button>';
         
         saveData();
-    }}
+    }
 
-    function deleteRow(btn) {{
+    function deleteRow(btn) {
         var row = btn.parentNode.parentNode;
         row.parentNode.removeChild(row);
         saveData();
-    }}
+    }
 
-    function saveObserver() {{
+    function saveObserver() {
         var name = document.getElementById('observerName').value;
         var flat = document.getElementById('flatFrame').value;
-        try {{
+        try {
             localStorage.setItem('T1_check_ObserverName', name);
             localStorage.setItem('T1_check_FlatFrame', flat);
-        }} catch (e) {{
+        } catch (e) {
             console.warn("LocalStorage not available for Observer:", e);
-        }}
-    }}
+        }
+    }
 
-    function isValidHHMM(val) {{
-        if (!/^[0-9]{{4}}$/.test(val)) return false;
+    function isValidHHMM(val) {
+        if (!/^[0-9]{4}$/.test(val)) return false;
         var hh = parseInt(val.slice(0, 2), 10);
         var mm = parseInt(val.slice(2, 4), 10);
         return hh >= 0 && hh < 24 && mm >= 0 && mm < 60;
-    }}
+    }
 
-    function hhmmToMinutes(val) {{
+    function hhmmToMinutes(val) {
         var hh = parseInt(val.slice(0, 2), 10);
         var mm = parseInt(val.slice(2, 4), 10);
         return hh * 60 + mm;
-    }}
+    }
 
-    function saveData() {{
+    function saveData() {
         var table = document.getElementById('logTable');
         var rows = table.rows;
         var data = [];
         // Skip header (row 0)
-        for (var i = 1; i < rows.length; i++) {{
+        for (var i = 1; i < rows.length; i++) {
             var eventType = rows[i].cells[0].getElementsByTagName('select')[0].value;
             var startInput = rows[i].cells[1].getElementsByTagName('input')[0];
             var endInput = rows[i].cells[2].getElementsByTagName('input')[0];
@@ -359,14 +299,14 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
             var endTime = endInput.value.trim();
 
             // Validate time range only when both fields are valid hhmm values.
-            if (isValidHHMM(startTime) && isValidHHMM(endTime)) {{
-                if (hhmmToMinutes(endTime) < hhmmToMinutes(startTime)) {{
+            if (isValidHHMM(startTime) && isValidHHMM(endTime)) {
+                if (hhmmToMinutes(endTime) < hhmmToMinutes(startTime)) {
                     alert("Time not allowed");
                     endInput.value = "";
                     endTime = "";
                     endInput.focus();
-                }}
-            }}
+                }
+            }
 
             // Event Seq is now select
             var eventSeq = rows[i].cells[3].getElementsByTagName('select')[0].value;
@@ -374,7 +314,7 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
             var location = rows[i].cells[5].getElementsByTagName('input')[0].value;
             var t1Event = rows[i].cells[6].getElementsByTagName('input')[0].value;
 
-            data.push({{
+            data.push({
                 eventType: eventType,
                 startTime: startTime,
                 endTime: endTime,
@@ -382,36 +322,36 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
                 highSpeed: highSpeed,
                 location: location,
                 t1Event: t1Event
-            }});
-        }}
-        try {{
+            });
+        }
+        try {
             localStorage.setItem('eventLog_' + window.location.pathname, JSON.stringify(data));
-        }} catch (e) {{
+        } catch (e) {
             console.warn("LocalStorage not available:", e);
-        }}
-    }}
+        }
+    }
 
-    function loadData() {{
-        try {{
+    function loadData() {
+        try {
             // Load Observer Name
             var obsName = localStorage.getItem('T1_check_ObserverName'); // Load from global key
-            if (obsName) {{
+            if (obsName) {
                 var obsInput = document.getElementById('observerName');
                 if (obsInput) obsInput.value = obsName;
-            }}
+            }
             var flat = localStorage.getItem('T1_check_FlatFrame');
-            if (flat) {{
+            if (flat) {
                  var ffInput = document.getElementById('flatFrame');
                  if (ffInput) ffInput.value = flat;
-            }}
+            }
 
             var stored = localStorage.getItem('eventLog_' + window.location.pathname);
-            if (stored) {{
+            if (stored) {
                 var data = JSON.parse(stored);
                 var table = document.getElementById('logTable').getElementsByTagName('tbody')[0];
                 table.innerHTML = "";
                 
-                for (var i = 0; i < data.length; i++) {{
+                for (var i = 0; i < data.length; i++) {
                     var newRow = table.insertRow();
                     var cell1 = newRow.insertCell(0);
                     var cell2 = newRow.insertCell(1);
@@ -426,9 +366,9 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
                     var eventType = data[i].eventType || "";
                     var eventOpts = ["Doppler shift", "Ejection", "Filament activity", "Filament disapearance", "Filament eruption", "Flare", "H-alpha brightening", "Prominence activity", "Prominence eruption"];
                     var eventSelect = '<select onchange="saveData()" style="font-size: 0.9em;"><option value="">Select...</option>';
-                    for (var j = 0; j < eventOpts.length; j++) {{
+                    for (var j = 0; j < eventOpts.length; j++) {
                         eventSelect += '<option value="' + eventOpts[j] + '"' + (eventType === eventOpts[j] ? ' selected' : '') + '>' + eventOpts[j] + '</option>';
-                    }}
+                    }
                     eventSelect += '</select>';
                     cell1.innerHTML = eventSelect;
 
@@ -441,19 +381,19 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
                     // Event Seq - Dropdown
                     var eventSeq = data[i].eventSeq || "";
                     var seqOptsSorted = [
-                        {{val: "A", text: "After (A)"}},
-                        {{val: "BA", text: "Befor after (BA)"}},
-                        {{val: "B", text: "Before (B)"}},
-                        {{val: "BI", text: "Before interm. (BI)"}},
-                        {{val: "BIA", text: "Before interm. after (BIA)"}},
-                        {{val: "F", text: "Full (F)"}},
-                        {{val: "FI", text: "Full interm. (FI)"}},
-                        {{val: "IA", text: "Interm. after (IA)"}}
+                        {val: "A", text: "After (A)"},
+                        {val: "BA", text: "Befor after (BA)"},
+                        {val: "B", text: "Before (B)"},
+                        {val: "BI", text: "Before interm. (BI)"},
+                        {val: "BIA", text: "Before interm. after (BIA)"},
+                        {val: "F", text: "Full (F)"},
+                        {val: "FI", text: "Full interm. (FI)"},
+                        {val: "IA", text: "Interm. after (IA)"}
                     ];
                     var seqSelect = '<select onchange="saveData()" style="font-size: 0.9em; width: 100%;"><option value="">Select...</option>';
-                    for (var k = 0; k < seqOptsSorted.length; k++) {{
+                    for (var k = 0; k < seqOptsSorted.length; k++) {
                         seqSelect += '<option value="' + seqOptsSorted[k].val + '"' + (eventSeq === seqOptsSorted[k].val ? ' selected' : '') + '>' + seqOptsSorted[k].text + '</option>';
-                    }}
+                    }
                     seqSelect += '</select>';
                     cell4.innerHTML = seqSelect;
 
@@ -472,22 +412,22 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
 
                     // Action
                     cell8.innerHTML = '<button onclick="deleteRow(this)" style="font-size:12px; padding:4px 8px;">Delete</button>';
-                }}
-            }}
-        }} catch (e) {{
+                }
+            }
+        } catch (e) {
             console.warn("Cannot load from LocalStorage:", e);
-        }}
-    }}
+        }
+    }
     
-    function cleanLog() {{
-        if (confirm("Are you sure you want to delete all entries from the log? This cannot be undone.")) {{
+    function cleanLog() {
+        if (confirm("Are you sure you want to delete all entries from the log? This cannot be undone.")) {
             var tableBody = document.getElementById('logTable').getElementsByTagName('tbody')[0];
             tableBody.innerHTML = "";
             localStorage.removeItem('eventLog_' + window.location.pathname);
-        }}
-    }}
+        }
+    }
 
-    function downloadCSV() {{
+    function downloadCSV() {
         var csvText = buildCSVText();
         var csvContent = "data:text/csv;charset=utf-8," + csvText;
         var encodedUri = encodeURI(csvContent);
@@ -497,18 +437,18 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }}
+    }
 
-    function buildCSVText() {{
+    function buildCSVText() {
         var table = document.getElementById('logTable');
         var rows = table.rows;
         var observer = document.getElementById('observerName').value;
         var flatframe = document.getElementById('flatFrame').value;
 
-        var csvText = "Observer: " + observer + ",Flat frame: " + flatframe + "\\n";
-        csvText += "Event Type,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event\\n";
+        var csvText = "Observer: " + observer + ",Flat frame: " + flatframe + "\n";
+        csvText += "Event Type,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event\n";
 
-        for (var i = 1; i < rows.length; i++) {{ // Skip header
+        for (var i = 1; i < rows.length; i++) { // Skip header
             var eventType = rows[i].cells[0].getElementsByTagName('select')[0].value;
             var startTime = rows[i].cells[1].getElementsByTagName('input')[0].value;
             var endTime = rows[i].cells[2].getElementsByTagName('input')[0].value;
@@ -520,25 +460,25 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
 
             var rowData = [eventType, startTime, endTime, eventSeq, highSpeed, location, t1Event];
             // Escape commas in data and join
-            csvText += rowData.map(val => val.replace(/,/g, " ")).join(",") + "\\n";
-        }}
+            csvText += rowData.map(val => val.replace(/,/g, " ")).join(",") + "\n";
+        }
 
         return csvText;
-    }}
+    }
 
-    function previewCSV() {{
+    function previewCSV() {
         var csvText = buildCSVText();
         var params = 'width=900,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
         var win = window.open('', 'CSV_Preview_Window', params);
-        if (!win) {{
+        if (!win) {
             alert('Pop-up blocked! Please allow pop-ups for this site.');
             return;
-        }}
+        }
 
         var d = win.document;
         d.open();
         d.write('<html><head><title>CSV Preview</title>');
-        d.write('<style>body{{font-family: sans-serif; margin: 12px;}} h3{{margin:0 0 10px 0;}} pre{{white-space: pre-wrap; word-wrap: break-word; font-family: Menlo, Consolas, monospace; font-size: 13px; line-height: 1.4; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f7f7f7;}} button{{font-size:12px; padding:4px 8px; margin-bottom:10px;}}</style>');
+        d.write('<style>body{font-family: sans-serif; margin: 12px;} h3{margin:0 0 10px 0;} pre{white-space: pre-wrap; word-wrap: break-word; font-family: Menlo, Consolas, monospace; font-size: 13px; line-height: 1.4; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f7f7f7;} button{font-size:12px; padding:4px 8px; margin-bottom:10px;}</style>');
         d.write('</head><body>');
         d.write('<button onclick="window.close()">Close</button>');
         d.write('<h3>CSV Preview</h3>');
@@ -548,45 +488,45 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         var pre = win.document.getElementById('csvPreview');
         if (pre) pre.textContent = csvText;
         win.focus();
-    }}
+    }
 
     // Preload images
-    function preloadImages() {{
-        for (var i = 0; i < {num_frames}; i++) {{
+    function preloadImages() {
+        for (var i = 0; i < 10; i++) {
             aniFrames[i] = new Image();
             aniFrames[i].src = imageFiles[i];
-        }}
-    }}
+        }
+    }
     
-    function toggleDarkMode() {{
+    function toggleDarkMode() {
         var body = document.body;
         body.classList.toggle("dark-mode");
         var isDark = body.classList.contains("dark-mode");
         localStorage.setItem("darkMode", isDark);
         updateThemeButton(isDark);
-    }}
+    }
 
-    function loadTheme() {{
+    function loadTheme() {
         var isDark = localStorage.getItem("darkMode") === "true";
-        if (isDark) {{
+        if (isDark) {
             document.body.classList.add("dark-mode");
-        }}
+        }
         updateThemeButton(isDark);
-    }}
+    }
 
-    function updateThemeButton(isDark) {{
+    function updateThemeButton(isDark) {
         var btn = document.getElementById("themeBtn");
-        if (btn) {{
+        if (btn) {
             btn.innerHTML = isDark ? "Light Mode" : "Dark Mode";
-        }}
-    }}
-    function openNOAAWindow() {{
+        }
+    }
+    function openNOAAWindow() {
         var params = 'width=800,height=800,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
         var win = window.open("", "NOAA_AR_Window", params);
         // Assuming HTML is in a subdirectory (e.g. 20260312/) and NOAA_numbers is a sibling directory
         var imgPath = "../NOAA_numbers/qlmovie_ar_check_tmp.png"; 
         
-        if (win) {{
+        if (win) {
             var d = win.document;
             d.open();
             d.write('<html><head><title>NOAA Active Regions</title></head>');
@@ -598,46 +538,39 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
             d.write('</body></html>');
             d.close();
             win.focus();
-        }} else {{
+        } else {
             alert("Pop-up blocked! Please allow pop-ups for this site.");
-        }}
-    }}    """
-    
-    # HTML structure
-    html_content = f"""
-    <html>
-    <head>
-        <title>Image Sequence Viewer</title>
-        <script>{js_script}</script>
+        }
+    }    </script>
         <style>
-            body {{ text-align: center; font-family: sans-serif; transition: background-color 0.3s, color 0.3s; }}
-            .controls {{ margin: 10px 0; }}
-            button {{ padding: 8px 15px; font-size: 16px; margin-right: 5px; cursor: pointer; }}
-            #frameCounter {{ font-weight: bold; margin-left: 10px; }}
-            #logSection {{ margin: 20px auto; width: 80%; text-align: left; }}
-            #logContainer {{ max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 10px; }}
-            #logTable {{ width: 100%; border-collapse: collapse; font-size: 0.9em; }}
-            #logTable th, #logTable td {{ border: 1px solid #ddd; padding: 5px; }}
-            #logTable th {{ background-color: #f2f2f2; position: sticky; top: 0; z-index: 10; font-size: 0.9em; }}
-            #logControls {{ margin-top: 20px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }}
-            .zoom-control {{ margin-top: 10px; margin-bottom: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }}
-            .zoom-control button {{ font-size: 12px; padding: 2px 5px; }}
-            .controls button {{ font-size: 12px; padding: 4px 8px; }}
-            input[type=range] {{ vertical-align: middle; width: 200px; }}
+            body { text-align: center; font-family: sans-serif; transition: background-color 0.3s, color 0.3s; }
+            .controls { margin: 10px 0; }
+            button { padding: 8px 15px; font-size: 16px; margin-right: 5px; cursor: pointer; }
+            #frameCounter { font-weight: bold; margin-left: 10px; }
+            #logSection { margin: 20px auto; width: 80%; text-align: left; }
+            #logContainer { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 10px; }
+            #logTable { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+            #logTable th, #logTable td { border: 1px solid #ddd; padding: 5px; }
+            #logTable th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 10; font-size: 0.9em; }
+            #logControls { margin-top: 20px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+            .zoom-control { margin-top: 10px; margin-bottom: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+            .zoom-control button { font-size: 12px; padding: 2px 5px; }
+            .controls button { font-size: 12px; padding: 4px 8px; }
+            input[type=range] { vertical-align: middle; width: 200px; }
             
             /* Dark Mode Styles */
-            body.dark-mode {{ background-color: #121212; color: #ffffff; }}
-            body.dark-mode button {{ background-color: #333; color: #fff; border: 1px solid #555; }}
-            body.dark-mode button:hover {{ background-color: #444; }}
-            body.dark-mode #logContainer {{ border-color: #444; }}
-            body.dark-mode #logTable th {{ background-color: #222; color: #fff; border-color: #444; }}
-            body.dark-mode #logTable td {{ border-color: #444; }}
-            body.dark-mode input, body.dark-mode select {{ background-color: #333; color: #fff; border: 1px solid #555; }}
+            body.dark-mode { background-color: #121212; color: #ffffff; }
+            body.dark-mode button { background-color: #333; color: #fff; border: 1px solid #555; }
+            body.dark-mode button:hover { background-color: #444; }
+            body.dark-mode #logContainer { border-color: #444; }
+            body.dark-mode #logTable th { background-color: #222; color: #fff; border-color: #444; }
+            body.dark-mode #logTable td { border-color: #444; }
+            body.dark-mode input, body.dark-mode select { background-color: #333; color: #fff; border: 1px solid #555; }
         </style>
     </head>
     <body onload="preloadImages(); startAnimate(); loadData(); loadTheme();">
         <h2>
-            Observation: "{obs_date}"
+            Observation: "2026-03-25"
         </h2>
         
         <div class="zoom-control">
@@ -650,7 +583,7 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
             <button onclick="openNOAAWindow()" style="font-size: 12px; margin-left: 10px; padding: 4px 8px;">View today ARs</button>
         </div>
         
-        <img name="imageWindow" src="{files_js[0]}" alt="Image sequence animation" style="width: 100%; max-width: none;">
+        <img name="imageWindow" src="260324T222832_dif.jpg" alt="Image sequence animation" style="width: 100%; max-width: none;">
         
         <div class="controls">
             <button onclick="startAnimate()">Play</button>
@@ -660,7 +593,7 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
             <button onclick="speedUp()">Faster</button>
             <button onclick="slowDown()">Slower</button>
             <button onclick="reloadPage()">Reload</button>
-            <span id="frameCounter">{num_frames} frames ({delay_ms}ms), 1/{num_frames}</span>
+            <span id="frameCounter">10 frames (100ms), 1/10</span>
         </div>
 
         <div id="logSection">
@@ -699,66 +632,4 @@ def create_image_sequence_html(image_dir, output_html='image_sequence.html', del
         </div>
     </body>
     </html>
-    """
-
-    # Write the HTML file
-    with open(output_html, 'w') as f:
-        f.write(html_content)
-
-    # Open in web browser
-    print(f" Javascript movie successfully created in {os.path.dirname(output_html)}/ ")
-    #webbrowser.open(f'file://{os.path.realpath(output_html)}')
-
-# --- Main Execution ---
-def main():
-    # --- CONFIGURATION: SET THE BASE DIRECTORY WHERE YOUR IMAGE FOLDERS ARE LOCATED ---
-    # For example: '/Users/data/solar_images/'
-    # If the images are in the same folder as this script, you can leave it as '.'
-    BASE_DIR = '.'
-    #BASE_DIR = '/Users/denis/Pywork/Hida_ObsPy/SMART_tohban/T1_event_checkPy/' 
-    # ---------------------------------------------------------------------------------
-
-    # If caller injects user_input (e.g. IDL PYTHON.RUN + exec), use it.
-    # Otherwise, fall back to interactive prompt for normal terminal usage.
-    injected_user_input = globals().get('user_input')
-    if injected_user_input is None:
-        print("Please enter the observation date (e.g. yyyymmdd):")
-        try:
-            sys.stdout.flush() # Ensure prompt is displayed in buffered environments
-        except Exception:
-            pass
-
-        # Python 2/3 compatibility for input
-        try:
-            input_func = raw_input
-        except NameError:
-            input_func = input
-
-        user_input = input_func().strip()
-    else:
-        user_input = str(injected_user_input).strip()
-
-    full_path = os.path.join(BASE_DIR, user_input)
     
-    if not user_input or not os.path.exists(full_path):
-        print("The folder '{}' does not exist in '{}'. Please check it again!".format(user_input, os.path.abspath(BASE_DIR)))
-        try:
-            sys.stdout.flush()
-        except Exception:
-            pass
-        return 1
-    
-    create_image_sequence_html(full_path)
-    return 0
-
-if __name__ == "__main__":
-    # In embedded IDL runs, user_input is injected before exec(...).
-    # Avoid raising SystemExit there because IDL surfaces it as an exception.
-    if 'user_input' in globals():
-        main()
-    else:
-        raise SystemExit(main())
-else:
-    # This allows the script to run even if executed via techniques that don't set __name__ to __main__
-    # (e.g. some embedded Python environments or IDL's bridge)
-    main()

@@ -1,7 +1,8 @@
-Observer: Observer 1
-Event Type,Filename,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event
-,260312T001533_dif.jpg,,,,,,
-Doppler shift,260312T001733_dif.jpg,,,,,,
-Ejection,260312T000908_dif.jpg,,,,,,
-Ejection,260312T000920_dif.jpg,,,,,,
-Prominence activity,260312T000944_dif.jpg,,,,,,
+Observer: Denis,Flat frame: 260312T001233
+Event Type,Start Time,End Time,Event Sequence,High Speed,Location,T1 Event
+Doppler shift,00:11:45,00:12:33,BIA,Yes,AR 3244,High speed eruption
+Flare,00:14:21,00:14:57,BIA,No,AR 12349,M-class flare
+Doppler shift,00:15:21,00:16:21,F,No,Close to the west limb,None
+Filament activity,00:16:33,00:17:33,F,No,AR 34348 ,Doppler shift
+H-alpha brightening,00:17:45,00:08:32,IA,Yes,East limb,Compact source
+Filament activity,00:08:56,00:09:32,F,No,Near the disk center,Red shift
